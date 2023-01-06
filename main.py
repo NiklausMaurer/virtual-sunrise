@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+import json
 
 import paho.mqtt.client as mqtt
 
@@ -10,20 +11,24 @@ def on_connect(client, _, __, rc):
     client.subscribe(os.getenv('MQTT_TOPIC'))
 
 
-def on_message(_, __, msg):
+def on_message(client, __, msg):
     print(msg.topic + " " + str(msg.payload))
-    thread = threading.Thread(None, rise, None, ('first', 1))
-    thread.start()
-    thread2 = threading.Thread(None, rise, None, ('second', 1))
-    thread2.start()
+    threading.Thread(None, rise, None, (client, 'Living Room Right')).start()
+    threading.Thread(None, rise, None, (client, 'Living Room Left', 30)).start()
 
 
-def rise(entity):
+def rise(client, name, delay = 0):
+    time.sleep(delay)
     count = 0
-    while count < 5:
-        time.sleep(0.5)
-        count += 1
-        print("%s: %s" % (entity, time.ctime(time.time())))
+    while count < 255:
+        payload = {
+            "brightness": count,
+            "color_temp": int(454 - (count / 255.0) * (454 - 370))
+        }
+        time.sleep(1)
+        count += 2
+        print(name, json.dumps(payload))
+        client.publish(f'zigbee2mqtt/{name}/set', json.dumps(payload))
 
 
 def run_mqtt():
