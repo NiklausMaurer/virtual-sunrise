@@ -1,4 +1,3 @@
-import math
 import os
 import sys
 import time
@@ -8,7 +7,9 @@ import logging
 
 import paho.mqtt.client as mqtt
 
-from stopwatch import Stopwatch
+from sunrise.curves.linear import Linear
+from sunrise.curves.step import Step
+from sunrise.stopwatch import Stopwatch
 
 
 def on_message(client, _, __):
@@ -27,15 +28,6 @@ def on_connect(client, __, ___, rc, ____):
     on_message(client, None, None)
 
 
-class LinearCurve:
-    def __init__(self, min, max):
-        self.min = min
-        self.max = max
-
-    def __call__(self, t):
-        return self.min + (self.max - self.min) * t
-
-
 def project(curve, duration_seconds, t_seconds):
     if t_seconds > duration_seconds:
         return None
@@ -46,7 +38,7 @@ def rise_color(client, name):
     watch = Stopwatch()
 
     while True:
-        brightness = project(LinearCurve(50, 200), duration_seconds=10, t_seconds=watch())
+        brightness = project(Step(50, 200, .5, .9), duration_seconds=10, t_seconds=watch())
         if brightness is None:
             break
 
