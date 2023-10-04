@@ -1,8 +1,6 @@
-import base64
 import json
 import logging
 import math
-import os
 import sys
 import time
 
@@ -10,13 +8,15 @@ import paho.mqtt.client as mqtt
 
 from sunrise.curves.path import Path, Point
 from sunrise.curves.step import Step
+from sunrise.settings import Settings
 from sunrise.stoppable_thread import StoppableThread
 from sunrise.stopwatch import Stopwatch
 
 
 class Sunrise:
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
+        self.settings = settings
         self.thread = None
 
     def run(self):
@@ -25,7 +25,7 @@ class Sunrise:
 
     def on_message(self, client, __, message):
         logging.info("Message received.")
-        if message.topic == os.getenv('MQTT_TOPIC_ABORT'):
+        if message.topic == self.settings.topic_abort:
             if self.thread is not None and self.thread.is_alive():
                 logging.info("Aborting sunrise.")
                 self.thread.stop()
@@ -33,24 +33,23 @@ class Sunrise:
                 logging.info("No sunrise to abort.")
             return
 
-        if message.topic == os.getenv('MQTT_TOPIC_START'):
+        if message.topic == self.settings.topic_start:
             if self.thread is not None and self.thread.is_alive():
                 logging.info("Sunrise already running.")
                 return
             logging.info("Starting sunrise.")
-            lights = base64.b64decode(os.getenv('SUNRISE_LIGHTS')).decode("ascii").split(',')
+            lights = self.settings.sunrise_lights
             self.thread = StoppableThread(None, self.rise_color, None, (client, lights))
             self.thread.start()
 
-    @staticmethod
-    def on_connect(client, __, ___, rc, ____):
+    def on_connect(self, client, __, ___, rc, ____):
         logging.info(f"Connected to mqtt broker. Return code: {rc}")
 
-        topic = os.getenv('MQTT_TOPIC_START')
+        topic = self.settings.topic_start
         logging.info(f"Subscribing to topic {topic}")
         client.subscribe(topic)
 
-        topic = os.getenv('MQTT_TOPIC_ABORT')
+        topic = self.settings.topic_abort
         logging.info(f"Subscribing to topic {topic}")
         client.subscribe(topic)
 
@@ -67,7 +66,7 @@ class Sunrise:
         return curve(t_seconds / duration_seconds)
 
     def rise_color(self, client, lights):
-        overall_duration = int(os.getenv('SUNRISE_DURATION_SECONDS'))
+        overall_duration = self.settings.sunrise_duration_seconds
         topics = [f"zigbee2mqtt/{light}/set" for light in lights]
         color_path = Path(Point(0.735, 0.265),
                           Point(0.642, 0.354),
@@ -112,9 +111,9 @@ class Sunrise:
         client.on_subscribe = lambda _, __, ___, reason_codes, _____: logging.info(
             f"Subscribed successfully. Reason codes: {', '.join([c.getName() for c in reason_codes])}")
         client.on_connect_fail = lambda _, __: logging.info("Unable to connect to mqtt broker")
-        client.username_pw_set(os.getenv('MQTT_BROKER_USER'), os.getenv('MQTT_BROKER_PASSWORD'))
+        client.username_pw_set(self.settings.mqtt_broker_user, self.settings.mqtt_broker_password)
 
-        host = os.getenv('MQTT_BROKER_HOST')
+        host = self.settings.mqtt_broker_host
 
         logging.info(f"Connecting to {host}")
         client.connect(host)
