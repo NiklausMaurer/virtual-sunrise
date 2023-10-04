@@ -5,5 +5,6 @@ COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
 COPY main.py .
+COPY sunrise ./sunrise
 
 CMD ["python3", "/app/main.py"]
