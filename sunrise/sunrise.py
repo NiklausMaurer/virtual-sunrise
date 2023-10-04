@@ -1,13 +1,11 @@
-import json
 import logging
 import math
 import sys
 import time
 
-import paho.mqtt.client as mqtt
-
 from sunrise.curves.path import Path, Point
 from sunrise.curves.step import Step
+from sunrise.mqtt import Client
 from sunrise.settings import Settings
 from sunrise.stoppable_thread import StoppableThread
 from sunrise.stopwatch import Stopwatch
@@ -15,43 +13,33 @@ from sunrise.stopwatch import Stopwatch
 
 class Sunrise:
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, mqtt_client: Client):
         self.settings = settings
+        self.mqtt_client = mqtt_client
         self.thread = None
+        self.mqtt_client = mqtt_client
+        self.mqtt_client.set_on_start_callback(self.on_start)
+        self.mqtt_client.set_on_abort_callback(self.on_abort)
 
     def run(self):
         self.initialize_logging()
-        self.start_mqtt_client()
+        self.mqtt_client.run()
 
-    def on_message(self, client, __, message):
-        logging.info("Message received.")
-        if message.topic == self.settings.topic_abort:
-            if self.thread is not None and self.thread.is_alive():
-                logging.info("Aborting sunrise.")
-                self.thread.stop()
-            else:
-                logging.info("No sunrise to abort.")
+    def on_start(self):
+        if self.thread is not None and self.thread.is_alive():
+            logging.info("Sunrise already running.")
             return
+        logging.info("Starting sunrise.")
+        self.thread = StoppableThread(None, self.rise_color, None)
+        self.thread.start()
 
-        if message.topic == self.settings.topic_start:
-            if self.thread is not None and self.thread.is_alive():
-                logging.info("Sunrise already running.")
-                return
-            logging.info("Starting sunrise.")
-            lights = self.settings.sunrise_lights
-            self.thread = StoppableThread(None, self.rise_color, None, (client, lights))
-            self.thread.start()
-
-    def on_connect(self, client, __, ___, rc, ____):
-        logging.info(f"Connected to mqtt broker. Return code: {rc}")
-
-        topic = self.settings.topic_start
-        logging.info(f"Subscribing to topic {topic}")
-        client.subscribe(topic)
-
-        topic = self.settings.topic_abort
-        logging.info(f"Subscribing to topic {topic}")
-        client.subscribe(topic)
+    def on_abort(self):
+        if self.thread is not None and self.thread.is_alive():
+            logging.info("Aborting sunrise.")
+            self.thread.stop()
+        else:
+            logging.info("No sunrise to abort.")
+        return
 
     @staticmethod
     def project_integer(curve, duration_seconds, t_seconds):
@@ -65,8 +53,9 @@ class Sunrise:
             return None
         return curve(t_seconds / duration_seconds)
 
-    def rise_color(self, client, lights):
+    def rise_color(self):
         overall_duration = self.settings.sunrise_duration_seconds
+        lights = self.settings.sunrise_lights
         topics = [f"zigbee2mqtt/{light}/set" for light in lights]
         color_path = Path(Point(0.735, 0.265),
                           Point(0.642, 0.354),
@@ -79,7 +68,7 @@ class Sunrise:
         while current_time < overall_duration:
 
             if self.thread.stopped():
-                self.publish(client, topics, {"state": "OFF"})
+                self.mqtt_client.publish(topics, {"state": "OFF"})
                 break
 
             color = self.project(color_path, overall_duration, current_time)
@@ -91,34 +80,10 @@ class Sunrise:
                 },
             }
 
-            self.publish(client, topics, payload)
+            self.mqtt_client.publish(topics, payload)
 
             time.sleep(1)
             current_time = stopwatch.time()
-
-    @staticmethod
-    def publish(client, topics, payload):
-        payload_serialized = json.dumps(payload)
-        for topic in topics:
-            logging.debug(f"Publishing to topic {topic}. Payload: {payload_serialized}")
-            client.publish(topic, payload_serialized)
-
-    def start_mqtt_client(self):
-        client = mqtt.Client(protocol=mqtt.MQTTv5)
-        client.on_message = self.on_message
-        client.on_connect = self.on_connect
-
-        client.on_subscribe = lambda _, __, ___, reason_codes, _____: logging.info(
-            f"Subscribed successfully. Reason codes: {', '.join([c.getName() for c in reason_codes])}")
-        client.on_connect_fail = lambda _, __: logging.info("Unable to connect to mqtt broker")
-        client.username_pw_set(self.settings.mqtt_broker_user, self.settings.mqtt_broker_password)
-
-        host = self.settings.mqtt_broker_host
-
-        logging.info(f"Connecting to {host}")
-        client.connect(host)
-
-        client.loop_forever()
 
     @staticmethod
     def initialize_logging():
