@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import math
@@ -37,7 +38,8 @@ class Sunrise:
                 logging.info("Sunrise already running.")
                 return
             logging.info("Starting sunrise.")
-            self.thread = StoppableThread(None, self.rise_color, None, (client, 'Office Left', 'Office Right'))
+            lights = base64.b64decode(os.getenv('SUNRISE_LIGHTS')).decode("ascii").split(',')
+            self.thread = StoppableThread(None, self.rise_color, None, (client, lights))
             self.thread.start()
 
     @staticmethod
@@ -64,9 +66,9 @@ class Sunrise:
             return None
         return curve(t_seconds / duration_seconds)
 
-    def rise_color(self, client, *names):
+    def rise_color(self, client, lights):
         overall_duration = int(os.getenv('SUNRISE_DURATION_SECONDS'))
-        topics = [f"zigbee2mqtt/{name}/set" for name in names]
+        topics = [f"zigbee2mqtt/{light}/set" for light in lights]
         color_path = Path(Point(0.735, 0.265),
                           Point(0.642, 0.354),
                           Point(0.599, 0.391),
@@ -98,8 +100,8 @@ class Sunrise:
     @staticmethod
     def publish(client, topics, payload):
         payload_serialized = json.dumps(payload)
-        logging.debug(f"Publishing to topics {','.join(topics)}. Payload: {payload_serialized}")
         for topic in topics:
+            logging.debug(f"Publishing to topic {topic}. Payload: {payload_serialized}")
             client.publish(topic, payload_serialized)
 
     def start_mqtt_client(self):
