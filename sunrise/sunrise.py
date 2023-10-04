@@ -65,8 +65,7 @@ class Sunrise:
         return curve(t_seconds / duration_seconds)
 
     def rise_color(self, client, *names):
-        # idea: 3 phases: red -> orange, brightness, orange to white
-        overall_duration = 50  # seconds
+        overall_duration = 15 * 60  # seconds
         topics = [f"zigbee2mqtt/{name}/set" for name in names]
         color_path = Path(Point(0.735, 0.265),
                           Point(0.642, 0.354),
@@ -93,7 +92,7 @@ class Sunrise:
 
             self.publish(client, topics, payload)
 
-            time.sleep(0.3)
+            time.sleep(1)
             current_time = stopwatch.time()
 
     @staticmethod
