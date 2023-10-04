@@ -65,7 +65,7 @@ class Sunrise:
         return curve(t_seconds / duration_seconds)
 
     def rise_color(self, client, *names):
-        overall_duration = 15 * 60  # seconds
+        overall_duration = int(os.getenv('SUNRISE_DURATION_SECONDS'))
         topics = [f"zigbee2mqtt/{name}/set" for name in names]
         color_path = Path(Point(0.735, 0.265),
                           Point(0.642, 0.354),
