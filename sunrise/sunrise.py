@@ -1,6 +1,5 @@
 import logging
 import math
-import sys
 import time
 
 from sunrise.curves.path import Path, Point
@@ -60,7 +59,7 @@ class Sunrise:
                           Point(0.642, 0.354),
                           Point(0.599, 0.391),
                           Point(0.554, 0.426),
-                          Point(0.502, 0.434),
+                          Point(0.502, 0.418),
                           Point(0.443, 0.410))
         stopwatch = Stopwatch()
         current_time = stopwatch.time()
