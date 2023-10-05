@@ -22,7 +22,6 @@ class Sunrise:
         self.mqtt_client.set_on_abort_callback(self.on_abort)
 
     def run(self):
-        self.initialize_logging()
         self.mqtt_client.run()
 
     def on_start(self):
@@ -84,13 +83,3 @@ class Sunrise:
 
             time.sleep(1)
             current_time = stopwatch.time()
-
-    @staticmethod
-    def initialize_logging():
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        root.addHandler(handler)
