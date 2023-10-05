@@ -1,8 +1,8 @@
 import logging
-import math
 import time
 
 from sunrise.curves.path import Path, Point
+from sunrise.curves.projection import project, project_integer
 from sunrise.curves.step import Step
 from sunrise.mqtt import Client
 from sunrise.settings import Settings
@@ -39,18 +39,6 @@ class Sunrise:
             logging.info("No sunrise to abort.")
         return
 
-    @staticmethod
-    def project_integer(curve, duration_seconds, t_seconds):
-        if t_seconds > duration_seconds:
-            return None
-        return math.floor(curve(t_seconds / duration_seconds))
-
-    @staticmethod
-    def project(curve, duration_seconds, t_seconds):
-        if t_seconds > duration_seconds:
-            return None
-        return curve(t_seconds / duration_seconds)
-
     def rise_color(self):
         overall_duration = self.settings.sunrise_duration_seconds
         lights = self.settings.sunrise_lights
@@ -69,9 +57,9 @@ class Sunrise:
                 self.mqtt_client.publish(topics, {"state": "OFF"})
                 break
 
-            color = self.project(color_path, overall_duration, current_time)
+            color = project(color_path, overall_duration, current_time)
             payload = {
-                "brightness": self.project_integer(Step(1, 250, 0.4, 0.9), overall_duration, current_time),
+                "brightness": project_integer(Step(1, 250, 0.4, 0.9), overall_duration, current_time),
                 "color": {
                     "x": color.x,
                     "y": color.y
