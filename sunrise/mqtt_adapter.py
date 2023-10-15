@@ -10,16 +10,14 @@ class MqttAdapter:
 
     def __init__(self,
                  settings: Settings,
-                 mqtt_client: mqtt.Client,
-                 on_start,
-                 on_abort
+                 mqtt_client: mqtt.Client
                  ):
-        self.on_start = on_start
-        self.on_abort = on_abort
         self.settings = settings
         self.client = mqtt_client
         self.client.on_message = self.on_message
         self.client.on_connect = self.on_connect
+        self._on_abort_listeners = []
+        self._on_start_listeners = []
 
         self.client.on_subscribe = lambda _, __, ___, reason_codes, _____: logging.info(
             f"Subscribed successfully. Reason codes: {', '.join([c.getName() for c in reason_codes])}")
@@ -47,12 +45,18 @@ class MqttAdapter:
     def on_message(self, _, __, message):
         logging.info("Message received.")
         if message.topic == self.settings.topic_abort:
-            self.on_abort()
+            [listener() for listener in self._on_abort_listeners]
         if message.topic == self.settings.topic_start:
-            self.on_start()
+            [listener() for listener in self._on_start_listeners]
 
     def publish(self, topics, payload):
         payload_serialized = json.dumps(payload)
         for topic in topics:
             logging.debug(f"Publishing to topic {topic}. Payload: {payload_serialized}")
             self.client.publish(topic, payload_serialized)
+
+    def add_on_start_listener(self, listener):
+        self._on_start_listeners.append(listener)
+
+    def add_on_abort_listener(self, listener):
+        self._on_abort_listeners.append(listener)
