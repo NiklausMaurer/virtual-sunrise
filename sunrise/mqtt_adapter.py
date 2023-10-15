@@ -6,14 +6,14 @@ import paho.mqtt.client as mqtt
 from sunrise.settings import Settings
 
 
-class Client:
+class MqttAdapter:
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, mqtt_client: mqtt.Client):
         self.on_abort_callback = None
         self.on_start_callback = None
         self.settings = settings
         self.on_message = self.on_message
-        self.client = mqtt.Client(protocol=mqtt.MQTTv5)
+        self.client = mqtt_client
         self.client.on_message = self.on_message
         self.client.on_connect = self.on_connect
 
@@ -40,7 +40,7 @@ class Client:
         logging.info(f"Subscribing to topic {topic}")
         client.subscribe(topic)
 
-    def on_message(self, client, __, message):
+    def on_message(self, _, __, message):
         logging.info("Message received.")
         if message.topic == self.settings.topic_abort:
             self.on_abort_callback()

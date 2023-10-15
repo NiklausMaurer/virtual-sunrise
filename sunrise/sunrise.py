@@ -4,7 +4,7 @@ import time
 from sunrise.curves.path import Path, Point
 from sunrise.curves.projection import project, project_integer
 from sunrise.curves.step import Step
-from sunrise.mqtt import Client
+from sunrise.mqtt_adapter import MqttAdapter
 from sunrise.settings import Settings
 from sunrise.stoppable_thread import StoppableThread
 from sunrise.stopwatch import Stopwatch
@@ -12,7 +12,7 @@ from sunrise.stopwatch import Stopwatch
 
 class Sunrise:
 
-    def __init__(self, settings: Settings, mqtt_client: Client):
+    def __init__(self, settings: Settings, mqtt_client: MqttAdapter):
         self.settings = settings
         self.mqtt_client = mqtt_client
         self.thread = None
