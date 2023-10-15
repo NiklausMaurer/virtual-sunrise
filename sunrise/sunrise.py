@@ -14,9 +14,11 @@ from sunrise.stopwatch import Stopwatch
 
 class Sunrise:
 
-    def __init__(self, settings: Settings, mqtt_client: mqtt.Client):
+    def __init__(self, settings: Settings, mqtt_adapter: MqttAdapter):
         self.settings = settings
-        self.mqtt_adapter = MqttAdapter(settings, mqtt_client, self.on_start(), self.on_abort())
+        self.mqtt_adapter = mqtt_adapter
+        self.mqtt_adapter.add_on_start_listener(self.on_start)
+        self.mqtt_adapter.add_on_abort_listener(self.on_abort)
         self.thread = None
 
     def run(self):
