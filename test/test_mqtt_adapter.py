@@ -20,8 +20,23 @@ class TestMqttAdapter(unittest.TestCase):
         self.mqtt_client = Mock()
         self.mqtt_adapter = MqttAdapter(self.settings,
                                         self.mqtt_client,
-                                        on_start_callback=Mock(),
-                                        on_abort_callback=Mock())
+                                        on_start=Mock(),
+                                        on_abort=Mock())
+
+    def test_init(self):
+        mqtt_client = Mock()
+        on_start = Mock()
+        on_abort = Mock()
+
+        mqtt_adapter = MqttAdapter(self.settings, mqtt_client, on_start, on_abort)
+
+        mqtt_client.username_pw_set.assert_called_once_with(self.settings.mqtt_broker_user,
+                                                            self.settings.mqtt_broker_password)
+        mqtt_client.connect.assert_called_once_with(self.settings.mqtt_broker_host)
+        self.assertEqual(mqtt_client.on_message, mqtt_adapter.on_message)
+        self.assertEqual(mqtt_client.on_connect, mqtt_adapter.on_connect)
+        self.assertEqual(mqtt_adapter.on_start, on_start)
+        self.assertEqual(mqtt_adapter.on_abort, on_abort)
 
     def test_run(self):
         self.mqtt_adapter.run()
@@ -38,14 +53,14 @@ class TestMqttAdapter(unittest.TestCase):
     def test_on_message_start(self):
         self.mqtt_adapter.on_message(None, None, Mock(topic=self.settings.topic_start))
 
-        self.mqtt_adapter.on_start_callback.assert_called_once()
-        self.mqtt_adapter.on_abort_callback.assert_not_called()
+        self.mqtt_adapter.on_start.assert_called_once()
+        self.mqtt_adapter.on_abort.assert_not_called()
 
     def test_on_message_abort(self):
         self.mqtt_adapter.on_message(None, None, Mock(topic=self.settings.topic_abort))
 
-        self.mqtt_adapter.on_abort_callback.assert_called_once()
-        self.mqtt_adapter.on_start_callback.assert_not_called()
+        self.mqtt_adapter.on_abort.assert_called_once()
+        self.mqtt_adapter.on_start.assert_not_called()
 
     def test_publish(self):
         self.mqtt_adapter.publish(['topic1', 'topic2'], {'key': 'value'})

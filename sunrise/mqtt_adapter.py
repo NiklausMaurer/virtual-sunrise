@@ -11,13 +11,12 @@ class MqttAdapter:
     def __init__(self,
                  settings: Settings,
                  mqtt_client: mqtt.Client,
-                 on_start_callback,
-                 on_abort_callback
+                 on_start,
+                 on_abort
                  ):
-        self.on_abort_callback = on_start_callback
-        self.on_start_callback = on_abort_callback
+        self.on_start = on_start
+        self.on_abort = on_abort
         self.settings = settings
-        self.on_message = self.on_message
         self.client = mqtt_client
         self.client.on_message = self.on_message
         self.client.on_connect = self.on_connect
@@ -48,9 +47,9 @@ class MqttAdapter:
     def on_message(self, _, __, message):
         logging.info("Message received.")
         if message.topic == self.settings.topic_abort:
-            self.on_abort_callback()
+            self.on_abort()
         if message.topic == self.settings.topic_start:
-            self.on_start_callback()
+            self.on_start()
 
     def publish(self, topics, payload):
         payload_serialized = json.dumps(payload)
