@@ -1,6 +1,8 @@
 import logging
 import time
 
+import paho.mqtt.client as mqtt
+
 from sunrise.curves.path import Path, Point
 from sunrise.curves.projection import project, project_integer
 from sunrise.curves.step import Step
@@ -12,16 +14,13 @@ from sunrise.stopwatch import Stopwatch
 
 class Sunrise:
 
-    def __init__(self, settings: Settings, mqtt_client: MqttAdapter):
+    def __init__(self, settings: Settings, mqtt_client: mqtt.Client):
         self.settings = settings
-        self.mqtt_client = mqtt_client
+        self.mqtt_adapter = MqttAdapter(settings, mqtt_client, self.on_start(), self.on_abort())
         self.thread = None
-        self.mqtt_client = mqtt_client
-        self.mqtt_client.set_on_start_callback(self.on_start)
-        self.mqtt_client.set_on_abort_callback(self.on_abort)
 
     def run(self):
-        self.mqtt_client.run()
+        self.mqtt_adapter.run()
 
     def on_start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -54,7 +53,7 @@ class Sunrise:
         while current_time < overall_duration:
 
             if self.thread.stopped():
-                self.mqtt_client.publish(topics, {"state": "OFF"})
+                self.mqtt_adapter.publish(topics, {"state": "OFF"})
                 break
 
             color = project(color_path, overall_duration, current_time)
@@ -66,7 +65,7 @@ class Sunrise:
                 },
             }
 
-            self.mqtt_client.publish(topics, payload)
+            self.mqtt_adapter.publish(topics, payload)
 
             time.sleep(1)
             current_time = stopwatch.time()

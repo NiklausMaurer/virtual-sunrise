@@ -18,7 +18,10 @@ class TestMqttAdapter(unittest.TestCase):
             mqtt_broker_password='mqtt-broker-password'
         )
         self.mqtt_client = Mock()
-        self.mqtt_adapter = MqttAdapter(self.settings, self.mqtt_client)
+        self.mqtt_adapter = MqttAdapter(self.settings,
+                                        self.mqtt_client,
+                                        on_start_callback=Mock(),
+                                        on_abort_callback=Mock())
 
     def test_run(self):
         self.mqtt_adapter.run()
@@ -33,18 +36,12 @@ class TestMqttAdapter(unittest.TestCase):
         self.mqtt_client.subscribe.assert_any_call(self.settings.topic_abort)
 
     def test_on_message_start(self):
-        self.mqtt_adapter.on_start_callback = Mock()
-        self.mqtt_adapter.on_abort_callback = Mock()
-
         self.mqtt_adapter.on_message(None, None, Mock(topic=self.settings.topic_start))
 
         self.mqtt_adapter.on_start_callback.assert_called_once()
         self.mqtt_adapter.on_abort_callback.assert_not_called()
 
     def test_on_message_abort(self):
-        self.mqtt_adapter.on_start_callback = Mock()
-        self.mqtt_adapter.on_abort_callback = Mock()
-
         self.mqtt_adapter.on_message(None, None, Mock(topic=self.settings.topic_abort))
 
         self.mqtt_adapter.on_abort_callback.assert_called_once()

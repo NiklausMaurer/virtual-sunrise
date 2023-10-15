@@ -8,9 +8,14 @@ from sunrise.settings import Settings
 
 class MqttAdapter:
 
-    def __init__(self, settings: Settings, mqtt_client: mqtt.Client):
-        self.on_abort_callback = None
-        self.on_start_callback = None
+    def __init__(self,
+                 settings: Settings,
+                 mqtt_client: mqtt.Client,
+                 on_start_callback,
+                 on_abort_callback
+                 ):
+        self.on_abort_callback = on_start_callback
+        self.on_start_callback = on_abort_callback
         self.settings = settings
         self.on_message = self.on_message
         self.client = mqtt_client
@@ -46,12 +51,6 @@ class MqttAdapter:
             self.on_abort_callback()
         if message.topic == self.settings.topic_start:
             self.on_start_callback()
-
-    def set_on_start_callback(self, callback):
-        self.on_start_callback = callback
-
-    def set_on_abort_callback(self, callback):
-        self.on_abort_callback = callback
 
     def publish(self, topics, payload):
         payload_serialized = json.dumps(payload)
